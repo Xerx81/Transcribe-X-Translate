@@ -1,2 +1,4 @@
+.env
 .venv
 transcription.txt
+translation.txt

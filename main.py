@@ -1,8 +1,13 @@
+import discord
 import os
+import re
 import subprocess
 import warnings
 import whisper
+from discord import app_commands
+from dotenv import load_dotenv
 from googletrans import Translator
+from typing import Optional, Tuple 
 
 # Ignore specific warnings to clean up terminal output
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -10,7 +15,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 # Function to download audio from a video URL using yt-dlp
-def download_audio(video_url, output_file="audio.mp3") -> str:
+def download_audio(video_url, output_file="audio.mp3") -> Optional[str]:
     try:
         # Command to download audio in mp3 format
         command = [
@@ -29,7 +34,7 @@ def download_audio(video_url, output_file="audio.mp3") -> str:
 
 
 # Function to transcribe audio and translate the transcription
-def transcribe_and_translate(audio_file, target_language):
+def transcribe_and_translate(audio_file, target_language) -> Tuple[Optional[str], Optional[str]]:
     try:
         # Load the Whisper model
         model = whisper.load_model("base")
@@ -38,11 +43,13 @@ def transcribe_and_translate(audio_file, target_language):
         # Transcribe the audio file
         result = model.transcribe(audio_file)
         transcription = result['text']  # Extract the transcription text
+        print("Transcription Successfull")
 
         # Translate the transcription to the target language
         print(f"Translating to {target_language}... Please wait.")
         translator = Translator()
         translation = translator.translate(transcription, dest=target_language).text
+        print("Translation Successfull")
         
         return transcription, translation
 
@@ -54,32 +61,74 @@ def transcribe_and_translate(audio_file, target_language):
 
 # Main function to execute the script
 if __name__ == "__main__":
+    load_dotenv()  # Load environment variables from .env file
 
-    # Prompt the user for the video URL and target translation language
-    video_url = input("Enter the video link: ")
-    target_language = input("Enter language key for translation: ")
+    # Define intents to specify which events your bot will receive
+    intents = discord.Intents.default()
+    intents.message_content = True  # Allow the bot to read message content
 
-    # Download the audio from the video link
-    audio_file = download_audio(video_url, "audio.mp3")  
+    # Create a client instance with the specified intents
+    client = discord.Client(intents=intents)
+    tree = app_commands.CommandTree(client)  # Set up a command tree for slash commands
 
-    # Transcribe and translate the downloaded audio
-    transcripted_file, translation = transcribe_and_translate(audio_file, target_language)
+    @client.event
+    async def on_ready() -> None:
+        print(f'We have logged in as {client.user}')
+        try:
+            synced = await tree.sync()  # Sync all commands
+            print(f"Synced {len(synced)} command(s)")
+        except Exception as e:
+            print(e)
 
-    # Save the transcription to a text file
-    if transcripted_file:
-        output_txt = "transcription.txt"
-        with open(output_txt, "w") as file:
-            file.write(transcripted_file)
-        print(f"Transcription saved to \"{output_txt}\"")
+    
+    @tree.command(name="lexibot", description="Transcribe and Translate any video by its url")
+    @app_commands.describe(video_url="Url of the video for transcription", translate_lang="Name of language for translation. e.g. en")
+    async def run_bot(interaction: discord.Interaction, video_url: str, translate_lang: str) -> None:
+        await interaction.response.defer(ephemeral=True)
 
-    # Save the translation to a separate text file
-    if translation:
-        output_txt = "translation.txt"
-        with open(output_txt, "w") as file:
-            file.write(translation)
-        print(f"Translation saved to \"{output_txt}\"")
+        # Download the audio from the video link
+        audio_file = download_audio(video_url, "audio.mp3")  
 
-    # Clean up by removing the downloaded audio file
-    if audio_file:
-        os.remove(audio_file)
+        # Transcribe and translate the downloaded audio
+        transcription, translation = transcribe_and_translate(audio_file, translate_lang)
 
+        embed = discord.Embed(
+                    title="LexiBot",
+                    description=f"Video url: {video_url}\nTranslate Language: {translate_lang}",
+                    color=discord.Color.green()
+                )
+
+        if transcription and len(transcription) > 1024:
+
+            # Save transcription to txt file
+            output_txt = "transcription.txt"
+            with open(output_txt, "w") as file:
+                file.write(transcription)
+            print(f"Transcription saved to \"{output_txt}\"")
+
+            # Trim the transcription
+            transcription = transcription[:1020] + '...'  
+
+        if translation and len(translation) > 1024:
+
+            # Save translation to txt file
+            output_txt = "translation.txt"
+            with open(output_txt, "w") as file:
+                file.write(translation)
+            print(f"Translation saved to \"{output_txt}\"")
+
+            # Trim the translation
+            translation = translation[:1020] + '...'  
+
+        # Add embed field
+        embed.set_footer(text="Bot by @iamxerx")
+
+        # Clean up by removing the downloaded audio file
+        if audio_file:
+            os.remove(audio_file)
+
+        files = [discord.File("transcription.txt"), discord.File("translation.txt")]
+        
+        await interaction.followup.send(embed=embed, files=files)
+
+    client.run(os.getenv('TOKEN'))
