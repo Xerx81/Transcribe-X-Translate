@@ -53,8 +53,6 @@ LexiBot is a Discord bot that transcribes and translates audio from videos into 
 
 ---
 
----
-
 ## Credits
 - **Transcription**: [Whisper AI](https://github.com/openai/whisper) by OpenAI.
 - **Translation**: Google Translate API.
