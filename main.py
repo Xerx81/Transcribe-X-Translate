@@ -1,6 +1,5 @@
 import discord
 import os
-import re
 import subprocess
 import warnings
 import whisper
@@ -59,6 +58,12 @@ def transcribe_and_translate(audio_file, target_language) -> Tuple[Optional[str]
         return None, None
 
 
+def create_txt_file(input_file, output_file):
+        with open(output_file, "w") as file:
+            file.write(input_file)
+        print(f"{output_file} file is created")
+
+
 # Main function to execute the script
 if __name__ == "__main__":
     load_dotenv()  # Load environment variables from .env file
@@ -98,37 +103,22 @@ if __name__ == "__main__":
                     color=discord.Color.green()
                 )
 
-        if transcription and len(transcription) > 1024:
-
-            # Save transcription to txt file
-            output_txt = "transcription.txt"
-            with open(output_txt, "w") as file:
-                file.write(transcription)
-            print(f"Transcription saved to \"{output_txt}\"")
-
-            # Trim the transcription
-            transcription = transcription[:1020] + '...'  
-
-        if translation and len(translation) > 1024:
-
-            # Save translation to txt file
-            output_txt = "translation.txt"
-            with open(output_txt, "w") as file:
-                file.write(translation)
-            print(f"Translation saved to \"{output_txt}\"")
-
-            # Trim the translation
-            translation = translation[:1020] + '...'  
-
         # Add embed field
         embed.set_footer(text="Bot by @iamxerx")
+
+        # Save transcription and translation as text files
+        if transcription and translation:
+            create_txt_file(transcription, "transcription.txt")
+            create_txt_file(translation, "translation.txt")
 
         # Clean up by removing the downloaded audio file
         if audio_file:
             os.remove(audio_file)
 
+        # Store files in a list
         files = [discord.File("transcription.txt"), discord.File("translation.txt")]
         
+        # Send message with files attached
         await interaction.followup.send(embed=embed, files=files)
 
     client.run(os.getenv('TOKEN'))
