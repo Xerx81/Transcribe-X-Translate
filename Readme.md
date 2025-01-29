@@ -32,19 +32,24 @@ LexiBot is a Discord bot that transcribes and translates audio from videos into 
    source .venv/bin/activate
    ```
    
-3. Install dependencies:
+   For windows:
+   ```bash
+   source .venv\Scripts\activate
+   ```
+   
+4. Install dependencies:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. Whisper and yt-dlp requires FFmpeg to work properly. Install [here](https://www.ffmpeg.org/download.html)
+5. Whisper and yt-dlp requires FFmpeg to work properly. Install [here](https://www.ffmpeg.org/download.html)
 
-5. Add your bot's token in the `.env` file:
+6. Add your bot's token in the `.env` file:
    ```
    TOKEN=your_discord_bot_token
    ```
 
-6. Run the bot:
+7. Run the bot:
    ```bash
    python main.py
    ```
