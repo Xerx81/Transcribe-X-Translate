@@ -1,4 +1,4 @@
 .env
 .venv
-transcription.txt
-translation.txt
+temp
+__pycache__
